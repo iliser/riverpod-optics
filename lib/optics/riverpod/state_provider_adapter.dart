@@ -11,7 +11,7 @@ class _Lens<O, R> implements RiverpodLens<O, R> {
   final ClassicLens<O, R> lens;
 
   @override
-  RiverpodLens<O, I> proxy<I>(
+  RiverpodLens<O, I> riverpodLensProxy<I>(
     I Function(R object) valueFn,
     R Function(R object, I Function(I oldValue) updater) updateFn,
   ) {
@@ -22,7 +22,7 @@ class _Lens<O, R> implements RiverpodLens<O, R> {
   }
 
   @override
-  FocusedLens<R> watch(WidgetRef ref) {
+  FocusedLens<R> riverpodLensWatchFocus(WidgetRef ref) {
     final value = ref.watch(provider.select(lens.value));
     final update = ref.watch(provider.notifier).update;
 

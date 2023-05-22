@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:optics/meterial/components.dart';
 import 'package:optics/optics/optics.dart';
 
 void main() {
@@ -23,20 +24,90 @@ class MyApp extends StatelessWidget {
 final _counter = StateProvider((ref) => 0);
 
 class PushConfig {
-  PushConfig(this.personalPush, this.commercialPush);
+  PushConfig(this.personalPush, this.commercialPush, this.readonly);
 
   final bool personalPush;
   final bool commercialPush;
+  final bool readonly;
+
+  PushConfig copyWith({
+    bool? personalPush,
+    bool? commercialPush,
+    bool? readonly,
+  }) {
+    return PushConfig(
+      personalPush ?? this.personalPush,
+      commercialPush ?? this.commercialPush,
+      readonly ?? this.readonly,
+    );
+  }
+
+  static dynamic _personalPush(PushConfig o) => o.personalPush;
+  static dynamic _commercialPush(PushConfig o) => o.commercialPush;
+  static dynamic _readonly(PushConfig o) => o.readonly;
+  static const mm = {
+    #personalPush: _personalPush,
+    #commercialPush: _commercialPush,
+    #readonly: _readonly,
+  };
+  dynamic getField(Symbol field) {
+    final accessor = mm[field];
+    if (accessor == null) throw 'Field nott exists';
+    return accessor(this);
+  }
 }
 
-extension L<T> on RiverpodLens<T, PushConfig> {
-  RiverpodLens<T, bool> get personalPush => this.proxy(
+final config = StateProvider((ref) => PushConfig(false, false, false));
+
+// target for codegen
+extension<T> on RiverpodLens<T, PushConfig> {
+  RiverpodLens<T, bool> get personalPush => RiverpodLens.proxy(
+        this,
         (object) => object.personalPush,
         (object, updater) => PushConfig(
           updater(object.personalPush),
           object.commercialPush,
+          object.readonly,
         ),
       );
+  RiverpodLens<T, bool> get commercialPush => RiverpodLens.proxy(
+        this,
+        (object) => object.commercialPush,
+        (object, updater) => PushConfig(
+          object.personalPush,
+          updater(object.commercialPush),
+          object.readonly,
+        ),
+      );
+
+  RiverpodLens<T, bool> get readonly =>
+      RiverpodLens.proxyWithLens<T, PushConfig, bool>(
+        this,
+        CopyWithLens(#readonly),
+      );
+  // RiverpodLens.proxyWithLens<T, PushConfig, bool>(
+  //   this,
+  //   CopyWithLens((object) => object.readonly, (#readonly)),
+  // );
+}
+
+// Hack for simplify copy with lens defination
+class CopyWithLens<O, R> extends ClassicLens<O, R> {
+  final Symbol name;
+
+  CopyWithLens(this.name);
+
+  @override
+  O update(O object, R Function(R oldValue) updater) {
+    return Function.apply(
+      (object as dynamic).copyWith,
+      [],
+      {name: updater(object.getField(name))},
+    );
+  }
+
+  @override
+  R value(O object) => (object as dynamic).getField(name);
 }
 
 class MyHomePage extends ConsumerWidget {
@@ -49,18 +120,9 @@ class MyHomePage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final counter = _counter.lens.watch(ref);
+    final counter = RiverpodLens.focus(_counter.lens, ref);
 
-    final push = _counter.lens.watch(ref);
-
-    Type t<T>() => T;
-    final type = t<int?>();
-
-    if (type == t<int?>()) {
-      debugPrint('type is nullable');
-    } else {
-      debugPrint('type is required');
-    }
+    final push = RiverpodLens.focus(_counter.lens, ref);
 
     return Scaffold(
       appBar: AppBar(
@@ -70,6 +132,18 @@ class MyHomePage extends ConsumerWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
+            SwitchListTileL(
+              lens: config.lens.personalPush,
+              title: Text('Personal push'),
+            ),
+            SwitchListTileL(
+              lens: config.lens.commercialPush,
+              title: Text('Commercial push'),
+            ),
+            SwitchListTileL(
+              lens: config.lens.readonly,
+              title: Text('Readonly'),
+            ),
             const Text(
               'You have pushed the button this many times:',
             ),

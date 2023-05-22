@@ -8,6 +8,10 @@ abstract class ClassicLens<O, R> {
   ) {
     return ClassicLensProxy(this, valueFn, updateFn);
   }
+
+  ClassicLens<O, I> proxyWithLens<I>(ClassicLens<R, I> lens) {
+    return ClassicLensProxy(this, lens.value, lens.update);
+  }
 }
 
 class ValueLens<O> extends ClassicLens<O, O> {
