@@ -23,13 +23,19 @@ class MyApp extends StatelessWidget {
 
 final _counter = StateProvider((ref) => 0);
 
-class PushConfig {
+abstract class LensReflect<T> {
+  T copyWith();
+  dynamic getField(Symbol name);
+}
+
+class PushConfig implements LensReflect<PushConfig> {
   PushConfig(this.personalPush, this.commercialPush, this.readonly);
 
   final bool personalPush;
   final bool commercialPush;
   final bool readonly;
 
+  @override
   PushConfig copyWith({
     bool? personalPush,
     bool? commercialPush,
@@ -42,57 +48,35 @@ class PushConfig {
     );
   }
 
-  static dynamic _personalPush(PushConfig o) => o.personalPush;
-  static dynamic _commercialPush(PushConfig o) => o.commercialPush;
-  static dynamic _readonly(PushConfig o) => o.readonly;
-  static const mm = {
-    #personalPush: _personalPush,
-    #commercialPush: _commercialPush,
-    #readonly: _readonly,
-  };
-  dynamic getField(Symbol field) {
-    final accessor = mm[field];
-    if (accessor == null) throw 'Field nott exists';
-    return accessor(this);
-  }
+  @override
+  dynamic getField(Symbol field) => switch (field) {
+        #personalPush => personalPush,
+        #commercialPush => commercialPush,
+        #readonly => readonly,
+        _ => throw 'field not found'
+      };
+}
+
+extension<T> on RiverpodLens<T, PushConfig> {
+  RiverpodLens<T, bool> get personalPush => proxyBySymbol(#personalPush);
+  RiverpodLens<T, bool> get commercialPush => proxyBySymbol(#commercialPush);
+  RiverpodLens<T, bool> get readonly => proxyBySymbol(#readonly);
 }
 
 final config = StateProvider((ref) => PushConfig(false, false, false));
 
-// target for codegen
-extension<T> on RiverpodLens<T, PushConfig> {
-  RiverpodLens<T, bool> get personalPush => RiverpodLens.proxy(
+extension<T, O extends LensReflect<O>> on RiverpodLens<T, O> {
+  RiverpodLens<T, R> proxyBySymbol<R>(Symbol symbol) =>
+      RiverpodLens.proxyWithLens<T, O, R>(
         this,
-        (object) => object.personalPush,
-        (object, updater) => PushConfig(
-          updater(object.personalPush),
-          object.commercialPush,
-          object.readonly,
-        ),
+        CopyWithLens<O, R>(symbol),
       );
-  RiverpodLens<T, bool> get commercialPush => RiverpodLens.proxy(
-        this,
-        (object) => object.commercialPush,
-        (object, updater) => PushConfig(
-          object.personalPush,
-          updater(object.commercialPush),
-          object.readonly,
-        ),
-      );
-
-  RiverpodLens<T, bool> get readonly =>
-      RiverpodLens.proxyWithLens<T, PushConfig, bool>(
-        this,
-        CopyWithLens(#readonly),
-      );
-  // RiverpodLens.proxyWithLens<T, PushConfig, bool>(
-  //   this,
-  //   CopyWithLens((object) => object.readonly, (#readonly)),
-  // );
 }
 
+// target for codegen
+
 // Hack for simplify copy with lens defination
-class CopyWithLens<O, R> extends ClassicLens<O, R> {
+class CopyWithLens<O extends LensReflect<O>, R> extends ClassicLens<O, R> {
   final Symbol name;
 
   CopyWithLens(this.name);
@@ -100,7 +84,7 @@ class CopyWithLens<O, R> extends ClassicLens<O, R> {
   @override
   O update(O object, R Function(R oldValue) updater) {
     return Function.apply(
-      (object as dynamic).copyWith,
+      object.copyWith,
       [],
       {name: updater(object.getField(name))},
     );
