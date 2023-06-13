@@ -2,10 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:optics/optics/optics.dart';
 
-extension RLChange<R> on FocusedLens<R> {
-  R change(R newValue) => update((_) => newValue);
-}
-
 class SwitchListTileL<T> extends ConsumerWidget {
   const SwitchListTileL({
     super.key,

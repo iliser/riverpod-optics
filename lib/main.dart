@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:optics/meterial/components.dart';
+import 'package:optics/meterial/switch_list_tile.dart';
+import 'package:optics/meterial/text_field.dart';
 import 'package:optics/optics/optics.dart';
 
 void main() {
@@ -22,11 +23,6 @@ class MyApp extends StatelessWidget {
 }
 
 final _counter = StateProvider((ref) => 0);
-
-abstract class LensReflect<T> {
-  T copyWith();
-  dynamic getField(Symbol name);
-}
 
 class PushConfig implements LensReflect<PushConfig> {
   PushConfig(this.personalPush, this.commercialPush, this.readonly);
@@ -64,35 +60,7 @@ extension<T> on RiverpodLens<T, PushConfig> {
 }
 
 final config = StateProvider((ref) => PushConfig(false, false, false));
-
-extension<T, O extends LensReflect<O>> on RiverpodLens<T, O> {
-  RiverpodLens<T, R> proxyBySymbol<R>(Symbol symbol) =>
-      RiverpodLens.proxyWithLens<T, O, R>(
-        this,
-        CopyWithLens<O, R>(symbol),
-      );
-}
-
-// target for codegen
-
-// Hack for simplify copy with lens defination
-class CopyWithLens<O extends LensReflect<O>, R> extends ClassicLens<O, R> {
-  final Symbol name;
-
-  CopyWithLens(this.name);
-
-  @override
-  O update(O object, R Function(R oldValue) updater) {
-    return Function.apply(
-      object.copyWith,
-      [],
-      {name: updater(object.getField(name))},
-    );
-  }
-
-  @override
-  R value(O object) => (object as dynamic).getField(name);
-}
+final stringProvider = StateProvider((ref) => '');
 
 class MyHomePage extends ConsumerWidget {
   const MyHomePage({
@@ -106,7 +74,13 @@ class MyHomePage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final counter = RiverpodLens.focus(_counter.lens, ref);
 
-    final push = RiverpodLens.focus(_counter.lens, ref);
+    final push = RiverpodLens.focus(
+      _counter.lens.riverpodLensProxy(
+        (object) => object.toDouble(),
+        (object, updater) => updater(object.toDouble()).toInt(),
+      ),
+      ref,
+    );
 
     return Scaffold(
       appBar: AppBar(
@@ -116,6 +90,26 @@ class MyHomePage extends ConsumerWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
+            Slider(
+              divisions: 64,
+              value: counter.value.toDouble(),
+              onChanged: (v) => counter.change(v.toInt()),
+              min: 0,
+              max: 64,
+            ),
+            RadioListTile(
+              value: 1,
+              groupValue: 1,
+              title: Text('first'),
+              onChanged: (_) {},
+            ),
+            RadioListTile(
+              value: 2,
+              groupValue: 1,
+              title: Text('second'),
+              onChanged: (_) {},
+            ),
+            TextFieldL(lens: stringProvider.lens),
             SwitchListTileL(
               lens: config.lens.personalPush,
               title: Text('Personal push'),

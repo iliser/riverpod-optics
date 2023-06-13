@@ -52,3 +52,7 @@ class OptionalLens<O, R> extends RiverpodLens<O, R?> {
   FocusedLens<R?> riverpodLensWatchFocus(WidgetRef ref) =>
       RiverpodLens.focus(lens, ref);
 }
+
+extension RLChange<R> on FocusedLens<R> {
+  R change(R newValue) => update((_) => newValue);
+}
