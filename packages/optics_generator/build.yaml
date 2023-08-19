@@ -1,0 +1,13 @@
+targets:
+  $default:
+    builders:
+      generators|annotations:
+        enabled: true
+
+builders:
+  lens:
+    import: "package:optics_generator/optics_generator.dart"
+    builder_factories: ["generateLens"]
+    build_extensions: { ".dart": [".proxy_lens.dart"]}
+    auto_apply: dependents
+    build_to: source
